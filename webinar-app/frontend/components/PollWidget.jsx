@@ -103,45 +103,54 @@ export default function PollWidget({ socket, webinarId }) {
 
         {polls.map((poll) => {
           const totalVotes = poll.options.reduce((sum, o) => sum + o.votes, 0);
-          const hasVoted = !!votedPolls[poll.id];
+          const hasVoted   = !!votedPolls[poll.id];
+          const isHost     = role === 'host';
+          const showResults = hasVoted || isHost;
 
           return (
             <div key={poll.id} className="bg-gray-800 rounded p-3">
               <p className="text-white text-sm font-medium mb-3">{poll.question}</p>
               <div className="space-y-2">
                 {poll.options.map((opt) => {
-                  const pct = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
+                  const pct      = totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
+                  const isMyVote = votedPolls[poll.id] === opt.id;
                   return (
                     <div key={opt.id}>
                       <button
                         onClick={() => !hasVoted && vote(poll.id, opt.id)}
                         disabled={hasVoted}
                         className={`w-full text-left text-sm px-3 py-2 rounded transition-colors ${
-                          votedPolls[poll.id] === opt.id
+                          isMyVote
                             ? 'bg-blue-600 text-white'
                             : hasVoted
                             ? 'bg-gray-700 text-gray-300 cursor-default'
                             : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
                         }`}
                       >
-                        {opt.text}
+                        <span className="flex justify-between">
+                          <span>{opt.text}</span>
+                          {showResults && <span className="text-xs opacity-70">{opt.votes}</span>}
+                        </span>
                       </button>
-                      {(hasVoted || role === 'host') && (
+                      {showResults && (
                         <div className="mt-1 flex items-center gap-2">
                           <div className="flex-1 h-1.5 bg-gray-700 rounded overflow-hidden">
                             <div
-                              className="h-full bg-blue-500 rounded transition-all"
+                              className={`h-full rounded transition-all duration-500 ${isMyVote ? 'bg-blue-400' : 'bg-gray-500'}`}
                               style={{ width: `${pct}%` }}
                             />
                           </div>
-                          <span className="text-xs text-gray-400">{pct}%</span>
+                          <span className="text-xs text-gray-400 w-8 text-right">{pct}%</span>
                         </div>
                       )}
                     </div>
                   );
                 })}
               </div>
-              <p className="text-gray-500 text-xs mt-2">{totalVotes} votes</p>
+              <p className="text-gray-500 text-xs mt-2">
+                {totalVotes} vote{totalVotes !== 1 ? 's' : ''}
+                {isHost && !hasVoted && <span className="ml-2 text-yellow-500">(live)</span>}
+              </p>
             </div>
           );
         })}

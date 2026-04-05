@@ -14,7 +14,7 @@ function ReactionOverlay() {
         <div
           key={r.id}
           className="absolute bottom-16 animate-float-up"
-          style={{ left: `${10 + Math.random() * 60}%` }}
+          style={{ left: `${r.left ?? 20}%` }}
         >
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-3xl drop-shadow-lg leading-none">{r.emoji}</span>
@@ -39,7 +39,7 @@ function RemoteAudio({ stream }) {
 }
 
 // ── Single video tile ─────────────────────────────────────────────────────────
-function Tile({ stream, name, isLocal, small = false }) {
+function Tile({ stream, name, isLocal, small = false, isScreen = false }) {
   const videoRef = useRef(null);
   const [hasVideo, setHasVideo] = useState(false);
 
@@ -77,12 +77,12 @@ function Tile({ stream, name, isLocal, small = false }) {
         {!small && <span className="text-gray-500 text-xs mt-2">Camera off</span>}
       </div>
 
-      {/* Video */}
+      {/* Video — screen shares use contain to avoid cropping corners */}
       <video
         ref={videoRef}
         autoPlay playsInline
         muted={isLocal}
-        className={`w-full h-full object-cover transition-opacity ${hasVideo ? 'opacity-100' : 'opacity-0'}`}
+        className={`w-full h-full transition-opacity ${isScreen ? 'object-contain bg-black' : 'object-cover'} ${hasVideo ? 'opacity-100' : 'opacity-0'}`}
       />
 
       {/* Label */}
@@ -153,8 +153,8 @@ export default function VideoGrid({ pinnedSocketId }) {
       {inSpotlight ? (
         /* ── SPOTLIGHT MODE ─── */
         <div className="relative w-full h-full bg-black">
-          {/* Full-screen spotlight tile */}
-          <Tile stream={spotlightStream} name={spotlightName} isLocal={localScreenActive} />
+          {/* Full-screen spotlight tile — always a screen share, use contain */}
+          <Tile stream={spotlightStream} name={spotlightName} isLocal={localScreenActive} isScreen />
 
           {/* PiP strip — bottom right */}
           <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">

@@ -8,6 +8,8 @@ import api from '../../../lib/axios';
 
 export default function CreateWebinarPage() {
   const router = useRouter();
+  // minDate recomputed each render to always reflect "now"
+  const getMinDate = () => new Date().toISOString().slice(0, 16);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -37,8 +39,7 @@ export default function CreateWebinarPage() {
     }
   };
 
-  // Get minimum datetime (now)
-  const minDate = new Date().toISOString().slice(0, 16);
+  const minDate = getMinDate();
 
   return (
     <div className="min-h-screen bg-gray-950">

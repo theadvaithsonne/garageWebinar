@@ -6,27 +6,29 @@ const User = require('../models/User');
 const router = express.Router();
 const SALT_ROUNDS = 12;
 
-// Simple in-memory rate limiter: max 10 attempts per IP per 15 min
-const loginAttempts = new Map();
-function rateLimit(req, res, next) {
-  const ip = req.ip;
-  const now = Date.now();
-  const window = 15 * 60 * 1000;
-  const max = 10;
-
-  const entry = loginAttempts.get(ip) || { count: 0, reset: now + window };
-  if (now > entry.reset) { entry.count = 0; entry.reset = now + window; }
-  entry.count++;
-  loginAttempts.set(ip, entry);
-
-  if (entry.count > max) {
-    return res.status(429).json({ message: 'Too many attempts. Try again later.' });
-  }
-  next();
+// Simple in-memory rate limiter
+function makeRateLimit(max, windowMs) {
+  const attempts = new Map();
+  return function rateLimit(req, res, next) {
+    const ip = req.ip;
+    const now = Date.now();
+    const entry = attempts.get(ip) || { count: 0, reset: now + windowMs };
+    if (now > entry.reset) { entry.count = 0; entry.reset = now + windowMs; }
+    entry.count++;
+    attempts.set(ip, entry);
+    if (entry.count > max) {
+      const retryAfter = Math.ceil((entry.reset - now) / 1000);
+      return res.status(429).json({ message: `Too many attempts. Try again in ${retryAfter}s.` });
+    }
+    next();
+  };
 }
 
+const registerLimit = makeRateLimit(20, 15 * 60 * 1000); // 20 per 15 min
+const loginLimit    = makeRateLimit(20, 15 * 60 * 1000); // 20 per 15 min
+
 // POST /api/auth/register
-router.post('/register', rateLimit, async (req, res) => {
+router.post('/register', registerLimit, async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
 
@@ -69,7 +71,7 @@ router.post('/register', rateLimit, async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', rateLimit, async (req, res) => {
+router.post('/login', loginLimit, async (req, res) => {
   try {
     const { email, password } = req.body;
 

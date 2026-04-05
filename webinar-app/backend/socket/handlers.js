@@ -125,9 +125,11 @@ function setupSocketHandlers(io) {
         const room = getRoom(webinarId);
         if (!room) return callback({ success: false, error: 'Room not found' });
 
-        const { transport, params } = await createWebRtcTransport(room.router);
         const peer = room.peers.get(socket.id);
-        if (peer) peer.transports.set(transport.id, transport);
+        if (!peer) return callback({ success: false, error: 'Peer not found in room' });
+
+        const { transport, params } = await createWebRtcTransport(room.router);
+        peer.transports.set(transport.id, transport);
 
         transport.on('dtlsstatechange', (state) => {
           if (state === 'closed') transport.close();
@@ -175,7 +177,7 @@ function setupSocketHandlers(io) {
         const transport = peer.transports.get(transportId);
         if (!transport) return callback({ success: false, error: 'Transport not found' });
 
-        const producer = await transport.produce({ kind, rtpParameters, appData });
+        const producer = await transport.produce({ kind, rtpParameters, appData: appData || {} });
         peer.producers.set(producer.id, producer);
 
         producer.on('transportclose', () => {
@@ -200,6 +202,9 @@ function setupSocketHandlers(io) {
     // ── CONSUME ───────────────────────────────────────────────────────────
     socket.on('consume', async ({ webinarId, transportId, producerId, rtpCapabilities }, callback) => {
       try {
+        if (!producerId || !rtpCapabilities) {
+          return callback({ success: false, error: 'Missing producerId or rtpCapabilities' });
+        }
         const room = getRoom(webinarId);
         if (!room) return callback({ success: false, error: 'Room not found' });
 

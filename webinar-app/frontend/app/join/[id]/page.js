@@ -18,9 +18,13 @@ export default function JoinPage() {
   // Fixed: was useState (bug), now useEffect
   useEffect(() => {
     if (!webinarId) return;
+    // Public endpoint — no auth required; backend exposes limited info
     api.get(`/api/webinars/${webinarId}`)
       .then(({ data }) => setWebinar(data))
-      .catch(() => setError('Webinar not found or unavailable'))
+      .catch((err) => {
+        if (err.response?.status === 404) setError('Webinar not found');
+        else setError('Unable to load webinar. Please try again.');
+      })
       .finally(() => setLoading(false));
   }, [webinarId]);
 

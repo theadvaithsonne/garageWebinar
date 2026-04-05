@@ -4,13 +4,17 @@ import { useState } from 'react';
 import useRoomStore from '../store/useRoomStore';
 
 export default function QAPanel({ socket, webinarId }) {
-  const [question, setQuestion] = useState('');
+  const [question,  setQuestion]  = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const { qaQuestions, role } = useRoomStore();
 
   const submitQuestion = () => {
-    if (!question.trim() || !socket) return;
-    socket.emit('sendQA', { webinarId, question: question.trim() });
-    setQuestion('');
+    if (!question.trim() || !socket || submitting) return;
+    setSubmitting(true);
+    socket.emit('sendQA', { webinarId, question: question.trim() }, (res) => {
+      setSubmitting(false);
+      if (res?.success !== false) setQuestion('');
+    });
   };
 
   const upvote = (questionId) => socket?.emit('upvoteQA', { webinarId, questionId });
@@ -99,10 +103,10 @@ export default function QAPanel({ socket, webinarId }) {
         />
         <button
           onClick={submitQuestion}
-          disabled={!question.trim()}
+          disabled={!question.trim() || submitting}
           className="bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white px-3 py-2 rounded text-sm transition-colors"
         >
-          Ask
+          {submitting ? '...' : 'Ask'}
         </button>
       </div>
     </div>

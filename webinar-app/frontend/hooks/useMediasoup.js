@@ -48,8 +48,19 @@ export function useMediasoup(socketRef, webinarId) {
 
     await ensureSendTransport();
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 48000 },
+      video: {
+        width:     { ideal: 1920, min: 640 },
+        height:    { ideal: 1080, min: 480 },
+        frameRate: { ideal: 30,   min: 15  },
+        facingMode: 'user',
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl:  true,
+        sampleRate: 48000,
+        channelCount: 2,
+      },
     });
     setLocalStream(stream);
 
@@ -57,14 +68,25 @@ export function useMediasoup(socketRef, webinarId) {
     const at = stream.getAudioTracks()[0];
 
     if (vt) {
+      // Log actual camera resolution being used
+      const settings = vt.getSettings();
+      console.log(`[Camera] ${settings.width}x${settings.height} @ ${settings.frameRate}fps`);
+
       const vp = await sendTransportRef.current.produce({
         track: vt,
         encodings: [
-          { maxBitrate: 100000, scaleResolutionDownBy: 4 },
-          { maxBitrate: 300000, scaleResolutionDownBy: 2 },
-          { maxBitrate: 900000 },
+          // Low  — for bad networks (360p)
+          { rid: 'r0', maxBitrate:  300_000, scaleResolutionDownBy: 4, scalabilityMode: 'S1T3' },
+          // Mid  — default quality (540p)
+          { rid: 'r1', maxBitrate:  800_000, scaleResolutionDownBy: 2, scalabilityMode: 'S1T3' },
+          // High — full quality (1080p)
+          { rid: 'r2', maxBitrate: 2_500_000, scaleResolutionDownBy: 1, scalabilityMode: 'S1T3' },
         ],
-        codecOptions: { videoGoogleStartBitrate: 1000 },
+        codecOptions: {
+          videoGoogleStartBitrate: 1000,
+          videoGoogleMaxBitrate:   2500,
+          videoGoogleMinBitrate:   100,
+        },
         appData: { type: 'camera' },
       });
       producersRef.current.video = vp;

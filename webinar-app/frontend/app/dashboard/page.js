@@ -124,7 +124,7 @@ export default function DashboardPage() {
                     <p className="text-gray-400 text-sm truncate mb-1">{w.description}</p>
                   )}
                   <p className="text-gray-500 text-xs">
-                    {new Date(w.scheduledAt).toLocaleString()} · {w.participantCount} participants
+                    {w.scheduledAt ? new Date(w.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '—'} · {w.participantCount ?? 0} participants
                   </p>
 
                   {/* Invite link row */}

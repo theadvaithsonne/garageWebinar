@@ -11,7 +11,7 @@ export default function ParticipantList({ socket, webinarId }) {
 
   const total = peers.length + 1;
 
-  const mute    = (id) => socket?.emit('muteParticipant',  { webinarId, targetSocketId: id }, (r) => { if (!r?.success) toast.error(r?.error); });
+  const mute    = (id) => socket?.emit('muteParticipant', { webinarId, targetSocketId: id }, (r) => { if (!r?.success) toast.error(r?.error); });
   const remove  = (id, name) => {
     if (!confirm(`Remove ${name} from the webinar?`)) return;
     socket?.emit('removeParticipant', { webinarId, targetSocketId: id }, (r) => { if (!r?.success) toast.error(r?.error); });
@@ -23,6 +23,12 @@ export default function ParticipantList({ socket, webinarId }) {
       else toast.error(r?.error);
     });
   };
+  const muteAll = () => {
+    const attendees = peers.filter((p) => p.role === 'attendee');
+    if (!attendees.length) return toast.info('No attendees to mute');
+    attendees.forEach((p) => socket?.emit('muteParticipant', { webinarId, targetSocketId: p.socketId }));
+    toast.success(`Muted ${attendees.length} attendee${attendees.length > 1 ? 's' : ''}`);
+  };
 
   const roleBadge = {
     host:     'bg-purple-900/50 text-purple-300 border border-purple-700',
@@ -32,9 +38,20 @@ export default function ParticipantList({ socket, webinarId }) {
 
   return (
     <div className="flex flex-col h-full bg-gray-900">
-      <div className="px-4 py-3 border-b border-gray-700">
-        <p className="text-white font-semibold text-sm">Participants</p>
-        <p className="text-gray-500 text-xs mt-0.5">{total} in room</p>
+      <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
+        <div>
+          <p className="text-white font-semibold text-sm">Participants</p>
+          <p className="text-gray-500 text-xs mt-0.5">{total} in room</p>
+        </div>
+        {role === 'host' && peers.length > 0 && (
+          <button
+            onClick={muteAll}
+            className="text-xs text-yellow-400 hover:text-yellow-300 bg-yellow-900/20 hover:bg-yellow-900/40 px-2 py-1 rounded transition-colors"
+            title="Mute all attendees"
+          >
+            🔇 Mute All
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">

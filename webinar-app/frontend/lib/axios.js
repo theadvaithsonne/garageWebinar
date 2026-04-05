@@ -16,14 +16,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 — clear auth and redirect to login
+// Handle 401 — clear auth and redirect to login (skip if already on auth pages)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('auth_user');
-      window.location.href = '/auth/login';
+      const onAuthPage = window.location.pathname.startsWith('/auth');
+      if (!onAuthPage) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        document.cookie = 'auth_token=; path=/; max-age=0';
+        window.location.href = '/auth/login';
+      }
     }
     return Promise.reject(error);
   }

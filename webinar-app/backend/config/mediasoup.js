@@ -1,7 +1,7 @@
 const mediasoupConfig = {
   worker: {
     rtcMinPort: 10000,
-    rtcMaxPort: 10100,
+    rtcMaxPort: 10999,
     logLevel: 'warn',
     logTags: ['info', 'ice', 'dtls', 'rtp', 'srtp', 'rtcp'],
   },
@@ -50,10 +50,10 @@ const mediasoupConfig = {
         announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP || '127.0.0.1',
       },
     ],
-    initialAvailableOutgoingBitrate: 1000000,
-    minimumAvailableOutgoingBitrate: 600000,
+    initialAvailableOutgoingBitrate: 3_000_000,  // 3 Mbps start
+    minimumAvailableOutgoingBitrate:   600_000,  // 600 kbps floor
     maxSctpMessageSize: 262144,
-    maxIncomingBitrate: 1500000,
+    maxIncomingBitrate: 8_000_000,               // 8 Mbps — don't throttle quality
   },
 };
 

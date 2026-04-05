@@ -107,8 +107,11 @@ const useRoomStore = create((set, get) => ({
     })),
   setPolls: (polls) => set({ polls }),
 
-  // Reset
-  resetRoom: () =>
+  // Reset — stops all local media tracks before clearing state
+  resetRoom: () => {
+    const { localStream, screenStream } = get();
+    try { localStream?.getTracks().forEach((t) => t.stop()); } catch {}
+    try { screenStream?.getTracks().forEach((t) => t.stop()); } catch {}
     set({
       webinarId: null,
       webinarTitle: '',
@@ -125,7 +128,8 @@ const useRoomStore = create((set, get) => ({
       polls: [],
       reactions: [],
       producers: {},
-    }),
+    });
+  },
 }));
 
 export default useRoomStore;

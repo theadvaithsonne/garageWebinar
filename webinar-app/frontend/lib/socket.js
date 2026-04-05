@@ -2,32 +2,35 @@ import { io } from 'socket.io-client';
 
 let socket = null;
 
-export function getSocket() {
-  if (!socket) {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000', {
-      auth: { token },
-      transports: ['websocket'],
-      autoConnect: false,
-    });
+export function connectSocket(token) {
+  // Always disconnect stale socket before creating a new one
+  if (socket) {
+    socket.removeAllListeners();
+    socket.disconnect();
+    socket = null;
   }
+
+  socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000', {
+    auth: { token },
+    transports: ['websocket'],
+    autoConnect: false,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+  });
+
+  socket.connect();
   return socket;
 }
 
-export function connectSocket(token) {
-  const s = getSocket();
-  if (token) {
-    s.auth = { token };
-  }
-  if (!s.connected) {
-    s.connect();
-  }
-  return s;
+export function getSocket() {
+  return socket;
 }
 
 export function disconnectSocket() {
-  if (socket?.connected) {
-    socket.disconnect();
+  if (socket) {
+    socket.removeAllListeners();
+    if (socket.connected) socket.disconnect();
+    socket = null;
   }
-  socket = null;
 }

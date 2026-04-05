@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api from '../../../lib/axios';
 import useAuthStore from '../../../store/useAuthStore';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
 
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'host' });
@@ -28,7 +29,8 @@ export default function RegisterPage() {
     try {
       const { data } = await api.post('/api/auth/register', form);
       setAuth(data.user, data.token);
-      router.push('/dashboard');
+      const redirect = searchParams.get('redirect') || '/dashboard';
+      router.push(redirect);
     } catch (err) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
