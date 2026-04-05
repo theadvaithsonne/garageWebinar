@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '../../../lib/axios';
 import useAuthStore from '../../../store/useAuthStore';
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-950" />}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
