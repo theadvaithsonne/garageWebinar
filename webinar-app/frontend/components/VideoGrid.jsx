@@ -39,7 +39,7 @@ function RemoteAudio({ stream }) {
 }
 
 // ── Single video tile ─────────────────────────────────────────────────────────
-function Tile({ stream, name, isLocal, small = false, isScreen = false }) {
+function Tile({ stream, name, isLocal, small = false, isScreen = false, isMuted }) {
   const videoRef = useRef(null);
   const [hasVideo, setHasVideo] = useState(false);
 
@@ -104,6 +104,13 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false }) {
         </div>
       )}
 
+      {/* Mute indicator */}
+      {!isScreen && isMuted && (
+        <div className="absolute top-1.5 left-1.5 bg-red-600/80 text-white text-xs px-1.5 py-0.5 rounded-full flex items-center gap-1">
+          🔇
+        </div>
+      )}
+
       {isLocal && (
         <div className="absolute top-1.5 right-1.5 bg-blue-600/90 text-white text-xs px-1.5 py-0.5 rounded-full">
           You
@@ -115,7 +122,7 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false }) {
 
 // ── Main VideoGrid ────────────────────────────────────────────────────────────
 export default function VideoGrid({ pinnedSocketId }) {
-  const { peers, localStream, screenStream, screenSharing } = useRoomStore();
+  const { peers, localStream, screenStream, screenSharing, micEnabled } = useRoomStore();
   const { user } = useAuthStore();
 
   // Find active screen share (local or remote)
@@ -129,20 +136,21 @@ export default function VideoGrid({ pinnedSocketId }) {
 
   // PiP cameras (shown when in spotlight mode)
   const pipTiles = [
-    { key: 'local', stream: localStream, name: myName, isLocal: true },
+    { key: 'local', stream: localStream, name: myName, isLocal: true, isMuted: !micEnabled },
     ...peers
-      .filter((p) => !p.streams?.screen || localScreenActive) // hide screen peer's camera if they're spotlighted
-      .map((p) => ({ key: p.socketId, stream: p.streams?.video || null, name: p.name, isLocal: false })),
+      .filter((p) => !p.streams?.screen || localScreenActive)
+      .map((p) => ({ key: p.socketId, stream: p.streams?.video || null, name: p.name, isLocal: false, isMuted: p.isMuted !== false })),
   ];
 
   // Grid tiles (shown when NOT in spotlight mode)
   const gridTiles = [
-    { key: 'local-cam', stream: localStream, name: myName, isLocal: true },
+    { key: 'local-cam', stream: localStream, name: myName, isLocal: true, isMuted: !micEnabled },
     ...peers.map((p) => ({
       key: `${p.socketId}-video`,
       stream: p.streams?.video || null,
       name: p.name,
       isLocal: false,
+      isMuted: p.isMuted !== false,
     })),
   ];
 
@@ -172,7 +180,7 @@ export default function VideoGrid({ pinnedSocketId }) {
           <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
             {pipTiles.map((t) => (
               <div key={t.key} className="w-36 h-24 rounded-xl overflow-hidden shadow-2xl border border-gray-700 ring-1 ring-black/50">
-                <Tile stream={t.stream} name={t.name} isLocal={t.isLocal} small />
+                <Tile stream={t.stream} name={t.name} isLocal={t.isLocal} small isMuted={t.isMuted} />
               </div>
             ))}
           </div>
@@ -181,7 +189,7 @@ export default function VideoGrid({ pinnedSocketId }) {
         /* ── GRID MODE ─── */
         <div className={`grid ${gridCols} gap-2 w-full h-full p-2 auto-rows-fr`}>
           {gridTiles.map((t) => (
-            <Tile key={t.key} stream={t.stream} name={t.name} isLocal={t.isLocal} />
+            <Tile key={t.key} stream={t.stream} name={t.name} isLocal={t.isLocal} isMuted={t.isMuted} />
           ))}
         </div>
       )}

@@ -216,7 +216,14 @@ function setupSocketHandlers(io) {
         const transport = peer?.transports.get(transportId);
         if (!transport) return callback({ success: false, error: 'Transport not found' });
 
-        const consumer = await transport.consume({ producerId, rtpCapabilities, paused: true });
+        // Look up producer's appData so the consumer inherits it (needed for consumerClosed slot routing)
+        let producerAppData = {};
+        for (const [, p] of room.peers) {
+          const prod = p.producers.get(producerId);
+          if (prod) { producerAppData = prod.appData || {}; break; }
+        }
+
+        const consumer = await transport.consume({ producerId, rtpCapabilities, paused: true, appData: producerAppData });
         peer.consumers.set(consumer.id, consumer);
 
         consumer.on('transportclose', () => {
@@ -513,6 +520,29 @@ function setupSocketHandlers(io) {
         });
       }
       callback?.({ success: true });
+    });
+
+    // ── MIC STATE (broadcast to peers) ──────────────────────────────────
+    socket.on('micState', ({ webinarId, muted }) => {
+      socket.to(webinarId).emit('peerMicState', { socketId: socket.id, muted: !!muted });
+    });
+
+    // ── UPDATE DISPLAY NAME ──────────────────────────────────────────────
+    socket.on('updateName', ({ webinarId, name }, callback) => {
+      try {
+        const cleanName = (name || '').trim().slice(0, 50);
+        if (!cleanName) return callback?.({ success: false, error: 'Name cannot be empty' });
+        const room = getRoom(webinarId);
+        if (!room) return callback?.({ success: false, error: 'Room not found' });
+        const peer = room.peers.get(socket.id);
+        if (!peer) return callback?.({ success: false, error: 'Peer not found' });
+        peer.name = cleanName;
+        socket.user.name = cleanName;
+        io.to(webinarId).emit('peerNameChanged', { socketId: socket.id, name: cleanName });
+        callback?.({ success: true });
+      } catch (err) {
+        callback?.({ success: false, error: err.message });
+      }
     });
 
     // ── EMOJI REACTION ────────────────────────────────────────────────────

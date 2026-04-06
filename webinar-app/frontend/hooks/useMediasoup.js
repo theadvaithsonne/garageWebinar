@@ -99,6 +99,7 @@ export function useMediasoup(socketRef, webinarId) {
       });
       producersRef.current.audio = ap;
       setMicEnabled(true);
+      socketRef.current?.emit('micState', { webinarId, muted: false });
     }
 
     return stream;
@@ -110,13 +111,15 @@ export function useMediasoup(socketRef, webinarId) {
     if (!p) return;
     if (p.paused) { p.resume(); setMicEnabled(true); }
     else          { p.pause();  setMicEnabled(false); }
-  }, [setMicEnabled]);
+    socketRef.current?.emit('micState', { webinarId, muted: p.paused });
+  }, [socketRef, webinarId, setMicEnabled]);
 
   // ── Force mute (called by host) ──────────────────────────────────────────
   const forceMute = useCallback(() => {
     const p = producersRef.current.audio;
     if (p && !p.paused) { p.pause(); setMicEnabled(false); }
-  }, [setMicEnabled]);
+    socketRef.current?.emit('micState', { webinarId, muted: true });
+  }, [socketRef, webinarId, setMicEnabled]);
 
   // ── Toggle camera ────────────────────────────────────────────────────────
   const toggleCam = useCallback(() => {

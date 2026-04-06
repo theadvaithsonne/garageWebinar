@@ -112,7 +112,10 @@ export default function ControlBar({ socket, webinarId, onToggleMic, onToggleCam
   };
 
   const handleEndWebinar = () => {
-    if (!confirm('End the webinar for everyone?')) return;
+    const msg = uploadProgress > 0
+      ? 'Recording is still uploading. End webinar anyway? (Upload will continue in background)'
+      : 'End the webinar for everyone?';
+    if (!confirm(msg)) return;
     socket?.emit('endWebinar', { webinarId }, (res) => {
       if (!res?.success) toast.error('Could not end webinar: ' + res?.error);
     });
@@ -469,7 +472,7 @@ export default function ControlBar({ socket, webinarId, onToggleMic, onToggleCam
       {role === 'host' && (
         uploadProgress > 0 ? (
           // Upload in progress
-          <div className="flex items-center gap-2 bg-gray-800 text-white text-xs px-3 py-2 rounded-full">
+          <div data-upload-active className="flex items-center gap-2 bg-gray-800 text-white text-xs px-3 py-2 rounded-full">
             <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
             <span className="font-mono tabular-nums">
               {uploadProgress < 100 ? `Uploading ${uploadProgress}%` : 'Converting...'}

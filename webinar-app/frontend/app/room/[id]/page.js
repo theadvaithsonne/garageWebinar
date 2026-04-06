@@ -27,14 +27,15 @@ export default function RoomPage() {
   const hasJoinedRef = useRef(false);
 
   const [joined,       setJoined]       = useState(false);
-  const [activeTab,    setActiveTab]    = useState('Chat');
+  const [activeTab,    setActiveTab_]    = useState('Chat');
+  const setActiveTab = (tab) => { setActiveTab_(tab); setChatTabActive(tab === 'Chat'); };
   const [mediaStarted, setMediaStarted] = useState(false);
   const [joinError,    setJoinError]    = useState('');
   const [connecting,   setConnecting]   = useState(true);
   const [socketStatus, setSocketStatus] = useState('connecting'); // connecting | connected | disconnected
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
 
-  const { setRole, setWebinarId, setWebinarTitle, addPeer, setMessages, resetRoom } = useRoomStore();
+  const { setRole, setWebinarId, setWebinarTitle, addPeer, setMessages, resetRoom, setChatTabActive } = useRoomStore();
   const mediasoup = useMediasoup(socketRef, webinarId);
 
   useEffect(() => {
@@ -73,6 +74,8 @@ export default function RoomPage() {
       useRoomStore.getState().removePeer(socketId);
     });
     socket.on('peerRoleChanged', ({ socketId, role }) => useRoomStore.getState().updatePeerRole(socketId, role));
+    socket.on('peerNameChanged', ({ socketId, name }) => useRoomStore.getState().updatePeerName(socketId, name));
+    socket.on('peerMicState', ({ socketId, muted }) => useRoomStore.getState().updatePeerMuted(socketId, muted));
     socket.on('handRaised',      ({ socketId, name, raised }) => {
       useRoomStore.getState().updateHandRaised(socketId, raised);
       if (raised) toast.info(`${name} raised their hand ✋`);
@@ -129,7 +132,18 @@ export default function RoomPage() {
 
     socket.on('webinarEnded', () => {
       toast.info('The webinar has ended');
-      setTimeout(() => { doCleanup(); router.push('/dashboard'); }, 2000);
+      // Delay navigation to allow recording upload to continue
+      const checkAndNavigate = () => {
+        const uploadProgress = document.querySelector('[data-upload-active]');
+        if (uploadProgress) {
+          toast.info('Waiting for recording upload to finish...');
+          setTimeout(checkAndNavigate, 3000);
+        } else {
+          doCleanup();
+          router.push('/dashboard');
+        }
+      };
+      setTimeout(checkAndNavigate, 2000);
     });
 
     // Join the room
@@ -269,6 +283,7 @@ export default function RoomPage() {
         </div>
         <WebinarTitle />
         <RoleTag />
+        <EditableName socket={socketRef.current} webinarId={webinarId} />
         <div className="flex-1" />
         <button
           onClick={() => setSidebarOpen((v) => !v)}
@@ -337,6 +352,43 @@ function RoleTag() {
   return <span className={`text-xs capitalize px-2 py-0.5 rounded-full font-medium ${colors[role] || colors.attendee}`}>{role === 'panelist' ? 'Co-Host' : role}</span>;
 }
 
+function EditableName({ socket, webinarId }) {
+  const { user } = useAuthStore();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(user?.name || '');
+
+  const save = () => {
+    const clean = name.trim();
+    if (!clean || clean === user?.name) { setEditing(false); return; }
+    socket?.emit('updateName', { webinarId, name: clean }, (res) => {
+      if (res?.success) {
+        useAuthStore.getState().setAuth({ ...user, name: clean }, localStorage.getItem('auth_token'));
+        toast.success('Name updated');
+      } else toast.error(res?.error || 'Failed');
+    });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={save}
+        onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+        maxLength={50}
+        className="bg-gray-800 text-white text-xs px-2 py-1 rounded border border-gray-600 w-32 focus:outline-none focus:border-blue-500"
+      />
+    );
+  }
+  return (
+    <button onClick={() => { setName(user?.name || ''); setEditing(true); }} className="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-gray-800 transition-colors hidden sm:block" title="Edit name">
+      {user?.name || 'Anonymous'} ✏️
+    </button>
+  );
+}
+
 function InviteButton({ webinarId }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -355,9 +407,11 @@ function InviteButton({ webinarId }) {
 }
 
 function TabButton({ tab, active, onClick, webinarId }) {
-  // Show unread badge for Chat and Q&A
-  const handCount     = useRoomStore((s) => s.peers.filter((p) => p.handRaised).length);
-  const badge = (tab === 'People' && handCount > 0) ? `✋${handCount}` : null;
+  const handCount      = useRoomStore((s) => s.peers.filter((p) => p.handRaised).length);
+  const unreadChat     = useRoomStore((s) => s.unreadChatCount);
+  const badge = (tab === 'Chat' && !active && unreadChat > 0) ? unreadChat
+              : (tab === 'People' && handCount > 0) ? `✋${handCount}`
+              : null;
 
   return (
     <button

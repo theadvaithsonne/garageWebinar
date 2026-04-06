@@ -24,6 +24,8 @@ const useRoomStore = create((set, get) => ({
 
   // Chat
   messages: [],
+  unreadChatCount: 0,
+  chatTabActive: true,
 
   // Q&A
   qaQuestions: [],
@@ -72,14 +74,28 @@ const useRoomStore = create((set, get) => ({
       peers: state.peers.map((p) => (p.socketId === socketId ? { ...p, role } : p)),
     })),
 
+  updatePeerName: (socketId, name) =>
+    set((state) => ({
+      peers: state.peers.map((p) => (p.socketId === socketId ? { ...p, name } : p)),
+    })),
+
   updateHandRaised: (socketId, raised) =>
     set((state) => ({
       peers: state.peers.map((p) => (p.socketId === socketId ? { ...p, handRaised: raised } : p)),
     })),
 
+  updatePeerMuted: (socketId, muted) =>
+    set((state) => ({
+      peers: state.peers.map((p) => (p.socketId === socketId ? { ...p, isMuted: muted } : p)),
+    })),
+
   // Chat
-  addMessage: (msg) => set((state) => ({ messages: [...state.messages, msg] })),
+  addMessage: (msg) => set((state) => ({
+    messages: [...state.messages, msg],
+    unreadChatCount: state.chatTabActive ? 0 : state.unreadChatCount + 1,
+  })),
   setMessages: (messages) => set({ messages }),
+  setChatTabActive: (v) => set({ chatTabActive: v, ...(v ? { unreadChatCount: 0 } : {}) }),
 
   // Q&A
   addQuestion: (qa) => set((state) => ({ qaQuestions: [...state.qaQuestions, qa] })),
@@ -126,6 +142,8 @@ const useRoomStore = create((set, get) => ({
       isRecording: false,
       handRaised: false,
       messages: [],
+      unreadChatCount: 0,
+      chatTabActive: true,
       qaQuestions: [],
       polls: [],
       reactions: [],
