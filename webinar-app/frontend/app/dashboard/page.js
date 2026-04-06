@@ -28,6 +28,8 @@ export default function DashboardPage() {
   const fetchWebinars = async () => {
     try {
       const { data } = await api.get('/api/webinars');
+      const order = { live: 0, scheduled: 1, ended: 2 };
+      data.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
       setWebinars(data);
     } catch {
       setError('Failed to load webinars');
