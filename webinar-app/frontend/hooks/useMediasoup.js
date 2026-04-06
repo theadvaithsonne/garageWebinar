@@ -133,7 +133,11 @@ export function useMediasoup(socketRef, webinarId) {
   const shareScreen = useCallback(async () => {
     await ensureSendTransport();
     const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 15 } },
+      video: {
+        width:     { ideal: 1920 },
+        height:    { ideal: 1080 },
+        frameRate: { ideal: 30, min: 15 },
+      },
       audio: true,
     });
 
@@ -142,7 +146,28 @@ export function useMediasoup(socketRef, webinarId) {
 
     const vt = stream.getVideoTracks()[0];
     if (vt) {
-      const sp = await sendTransportRef.current.produce({ track: vt, appData: { type: 'screen' } });
+      // Apply content hint for screen content (text/slides)
+      if ('contentHint' in vt) vt.contentHint = 'detail';
+
+      const settings = vt.getSettings();
+      console.log(`[Screen] ${settings.width}x${settings.height} @ ${settings.frameRate}fps`);
+
+      const sp = await sendTransportRef.current.produce({
+        track: vt,
+        encodings: [
+          {
+            maxBitrate: 5_000_000,       // 5 Mbps for crisp screen share
+            maxFramerate: 30,
+            scaleResolutionDownBy: 1,     // no downscaling
+          },
+        ],
+        codecOptions: {
+          videoGoogleStartBitrate: 2000,
+          videoGoogleMaxBitrate:   5000,
+          videoGoogleMinBitrate:   500,
+        },
+        appData: { type: 'screen' },
+      });
       producersRef.current.screen = sp;
       vt.onended = () => stopScreenShare();
     }

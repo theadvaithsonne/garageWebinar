@@ -50,10 +50,10 @@ const mediasoupConfig = {
         announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP || '127.0.0.1',
       },
     ],
-    initialAvailableOutgoingBitrate: 3_000_000,  // 3 Mbps start
-    minimumAvailableOutgoingBitrate:   600_000,  // 600 kbps floor
+    initialAvailableOutgoingBitrate: 5_000_000,  // 5 Mbps start
+    minimumAvailableOutgoingBitrate:   800_000,  // 800 kbps floor
     maxSctpMessageSize: 262144,
-    maxIncomingBitrate: 8_000_000,               // 8 Mbps — don't throttle quality
+    maxIncomingBitrate: 15_000_000,              // 15 Mbps — support HD screen share + camera
   },
 };
 
