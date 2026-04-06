@@ -100,13 +100,18 @@ export default function RoomPage() {
       useRoomStore.getState().setRole(newRole);
       if (newRole === 'panelist') {
         toast.success('You are now a Co-Host! You can use camera, mic & screen share.');
-        // Auto-start media for newly promoted co-host
         try {
           await mediasoup.startMedia();
           setMediaStarted(true);
         } catch (err) {
           console.warn('Auto media start failed for co-host:', err.message);
         }
+      } else if (newRole === 'attendee') {
+        // Demoted — stop all media
+        mediasoup.stopScreenShare();
+        mediasoup.cleanup();
+        setMediaStarted(false);
+        toast.warn('You have been moved back to attendee.');
       } else {
         toast.success(`Your role changed to ${newRole}`);
       }

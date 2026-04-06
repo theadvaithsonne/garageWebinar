@@ -453,6 +453,25 @@ function setupSocketHandlers(io) {
       callback?.({ success: true });
     });
 
+    socket.on('demoteToAttendee', ({ webinarId, targetSocketId }, callback) => {
+      const room = getRoom(webinarId);
+      if (!room) return callback?.({ success: false });
+      const peer = room.peers.get(socket.id);
+      if (!peer || peer.role !== 'host') return callback?.({ success: false, error: 'Unauthorized' });
+      const targetPeer = room.peers.get(targetSocketId);
+      if (targetPeer) {
+        targetPeer.role = 'attendee';
+        // Close all producers for the demoted user (they lose media rights)
+        targetPeer.producers.forEach((producer) => {
+          try { producer.close(); } catch {}
+        });
+        targetPeer.producers.clear();
+        io.to(targetSocketId).emit('roleChanged', { role: 'attendee' });
+        io.to(webinarId).emit('peerRoleChanged', { socketId: targetSocketId, role: 'attendee' });
+      }
+      callback?.({ success: true });
+    });
+
     socket.on('raiseHand', ({ webinarId }, callback) => {
       const room = getRoom(webinarId);
       if (!room) return callback?.({ success: false });

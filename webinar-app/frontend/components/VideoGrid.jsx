@@ -65,14 +65,20 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false }) {
     }
   }, [stream]);
 
-  const initial = name?.[0]?.toUpperCase() || '?';
+  // Build initials from name — e.g. "Deadpool Marvel" → "DM"
+  const initials = (name || '?')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0].toUpperCase())
+    .slice(0, 2)
+    .join('');
 
   return (
     <div className={`relative bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center border border-gray-800 group ${small ? 'w-full h-full' : 'w-full h-full'}`}>
       {/* Avatar placeholder */}
       <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity ${hasVideo ? 'opacity-0' : 'opacity-100'}`}>
         <div className={`rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center font-bold text-white shadow-lg ${small ? 'w-8 h-8 text-sm' : 'w-14 h-14 text-xl'}`}>
-          {initial}
+          {initials}
         </div>
         {!small && <span className="text-gray-500 text-xs mt-2">Camera off</span>}
       </div>

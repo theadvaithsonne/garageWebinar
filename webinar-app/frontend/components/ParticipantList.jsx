@@ -23,6 +23,13 @@ export default function ParticipantList({ socket, webinarId }) {
       else toast.error(r?.error);
     });
   };
+  const demote = (id, name) => {
+    if (!confirm(`Remove Co-Host role from ${name}? They will become a regular attendee.`)) return;
+    socket?.emit('demoteToAttendee', { webinarId, targetSocketId: id }, (r) => {
+      if (r?.success) toast.success(`${name} is now an attendee`);
+      else toast.error(r?.error || 'Failed to demote');
+    });
+  };
   const muteAll = () => {
     const attendees = peers.filter((p) => p.role === 'attendee');
     if (!attendees.length) return toast.info('No attendees to mute');
@@ -74,6 +81,7 @@ export default function ParticipantList({ socket, webinarId }) {
             onMute={()    => mute(peer.socketId)}
             onRemove={()  => remove(peer.socketId, peer.name)}
             onPromote={peer.role === 'attendee' ? () => promote(peer.socketId, peer.name) : null}
+            onDemote={peer.role === 'panelist' ? () => demote(peer.socketId, peer.name) : null}
           />
         ))}
       </div>
@@ -81,14 +89,14 @@ export default function ParticipantList({ socket, webinarId }) {
   );
 }
 
-function ParticipantRow({ name, role, isSelf, handRaised, roleBadge, isHost, onMute, onRemove, onPromote }) {
-  const initial = name?.[0]?.toUpperCase() || '?';
+function ParticipantRow({ name, role, isSelf, handRaised, roleBadge, isHost, onMute, onRemove, onPromote, onDemote }) {
+  const initials = (name || '?').split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase()).slice(0, 2).join('');
   const avatarColor = isSelf ? 'bg-blue-600' : 'bg-gray-600';
 
   return (
     <div className={`flex items-center gap-2.5 py-2 px-2 rounded-lg hover:bg-gray-800 group transition-colors ${handRaised ? 'bg-yellow-900/20' : ''}`}>
-      <div className={`relative w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-sm font-semibold text-white flex-shrink-0 ${handRaised ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-gray-900' : ''}`}>
-        {initial}
+      <div className={`relative w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-xs font-semibold text-white flex-shrink-0 ${handRaised ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-gray-900' : ''}`}>
+        {initials}
         {handRaised && <span className="absolute -top-1.5 -right-1.5 text-sm animate-bounce">✋</span>}
       </div>
 
@@ -107,7 +115,10 @@ function ParticipantRow({ name, role, isSelf, handRaised, roleBadge, isHost, onM
           {onPromote && (
             <button onClick={onPromote} title="Make Co-Host" className="text-xs text-green-400 hover:text-green-300 px-1.5 py-1 rounded hover:bg-gray-700 transition-colors">⬆️</button>
           )}
-          <button onClick={onRemove} title="Remove" className="text-xs text-red-400 hover:text-red-300 px-1.5 py-1 rounded hover:bg-gray-700 transition-colors">✕</button>
+          {onDemote && (
+            <button onClick={onDemote} title="Remove Co-Host" className="text-xs text-orange-400 hover:text-orange-300 px-1.5 py-1 rounded hover:bg-gray-700 transition-colors">⬇️</button>
+          )}
+          <button onClick={onRemove} title="Kick Out" className="text-xs text-red-400 hover:text-red-300 px-1.5 py-1 rounded hover:bg-gray-700 transition-colors">✕</button>
         </div>
       )}
     </div>
