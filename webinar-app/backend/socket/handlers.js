@@ -485,7 +485,7 @@ function setupSocketHandlers(io) {
       const room = getRoom(webinarId);
       if (!room) return callback?.({ success: false });
       const peer = room.peers.get(socket.id);
-      if (!peer || peer.role !== 'host') return callback?.({ success: false, error: 'Unauthorized' });
+      if (!peer || !['host', 'panelist'].includes(peer.role)) return callback?.({ success: false, error: 'Unauthorized' });
       const targetPeer = room.peers.get(targetSocketId);
       if (targetPeer) {
         targetPeer.role = 'panelist';
@@ -499,7 +499,7 @@ function setupSocketHandlers(io) {
       const room = getRoom(webinarId);
       if (!room) return callback?.({ success: false });
       const peer = room.peers.get(socket.id);
-      if (!peer || peer.role !== 'host') return callback?.({ success: false, error: 'Unauthorized' });
+      if (!peer || !['host', 'panelist'].includes(peer.role)) return callback?.({ success: false, error: 'Unauthorized' });
       const targetPeer = room.peers.get(targetSocketId);
       if (targetPeer) {
         targetPeer.role = 'attendee';

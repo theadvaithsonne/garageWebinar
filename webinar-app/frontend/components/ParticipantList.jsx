@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import useRoomStore from '../store/useRoomStore';
 import useAuthStore from '../store/useAuthStore';
 import { toast } from './Toast';
@@ -68,6 +69,8 @@ export default function ParticipantList({ socket, webinarId }) {
           role={role}
           isSelf
           roleBadge={roleBadge}
+          socket={socket}
+          webinarId={webinarId}
         />
 
         {peers.map((peer) => (
@@ -89,9 +92,24 @@ export default function ParticipantList({ socket, webinarId }) {
   );
 }
 
-function ParticipantRow({ name, role, isSelf, handRaised, roleBadge, isHost, onMute, onRemove, onPromote, onDemote }) {
+function ParticipantRow({ name, role, isSelf, handRaised, roleBadge, isHost, onMute, onRemove, onPromote, onDemote, socket, webinarId }) {
   const initials = (name || '?').split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase()).slice(0, 2).join('');
   const avatarColor = isSelf ? 'bg-blue-600' : 'bg-gray-600';
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(name);
+
+  const saveName = () => {
+    const clean = (editName || '').trim();
+    if (!clean || clean === name) { setEditing(false); return; }
+    socket?.emit('updateName', { webinarId, name: clean }, (res) => {
+      if (res?.success) {
+        const authState = useAuthStore.getState();
+        authState.setAuth({ ...authState.user, name: clean }, localStorage.getItem('auth_token'));
+        toast.success('Name updated');
+      } else toast.error(res?.error || 'Failed');
+    });
+    setEditing(false);
+  };
 
   return (
     <div className={`flex items-center gap-2.5 py-2 px-2 rounded-lg hover:bg-gray-800 group transition-colors ${handRaised ? 'bg-yellow-900/20' : ''}`}>
@@ -101,9 +119,24 @@ function ParticipantRow({ name, role, isSelf, handRaised, roleBadge, isHost, onM
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white truncate">
-          {name} {isSelf && <span className="text-gray-500 text-xs">(You)</span>}
-        </p>
+        {isSelf && editing ? (
+          <input
+            autoFocus
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onBlur={saveName}
+            onKeyDown={(e) => { if (e.key === 'Enter') saveName(); if (e.key === 'Escape') setEditing(false); }}
+            maxLength={50}
+            className="bg-gray-800 text-white text-sm px-2 py-0.5 rounded border border-gray-600 w-full focus:outline-none focus:border-blue-500"
+          />
+        ) : (
+          <p className="text-sm text-white truncate">
+            {name} {isSelf && <span className="text-gray-500 text-xs">(You)</span>}
+            {isSelf && (
+              <button onClick={() => { setEditName(name); setEditing(true); }} className="text-gray-500 hover:text-blue-400 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" title="Edit name">✏️</button>
+            )}
+          </p>
+        )}
         <span className={`inline-block text-xs px-1.5 py-0 rounded capitalize mt-0.5 ${roleBadge[role] || roleBadge.attendee}`}>
           {role === 'panelist' ? 'Co-Host' : role}
         </span>

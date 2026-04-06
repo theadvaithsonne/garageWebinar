@@ -288,15 +288,16 @@ export default function RoomPage() {
         </div>
         <WebinarTitle />
         <RoleTag />
-        <EditableName socket={socketRef.current} webinarId={webinarId} />
         <div className="flex-1" />
-        <button
-          onClick={() => setSidebarOpen((v) => !v)}
-          className="text-gray-400 hover:text-white text-sm px-2 py-1 rounded transition-colors"
-          title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-        >
-          {sidebarOpen ? '▶' : '◀'}
-        </button>
+        {!sidebarOpen && (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-gray-400 hover:text-white text-xs px-2.5 py-1.5 rounded-lg hover:bg-gray-800 transition-colors border border-gray-700"
+            title="Show sidebar"
+          >
+            💬 Chat
+          </button>
+        )}
         <InviteButton webinarId={webinarId} />
       </div>
 
@@ -321,6 +322,13 @@ export default function RoomPage() {
                 webinarId={webinarId}
               />
             ))}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="px-2 text-gray-500 hover:text-white transition-colors"
+              title="Close sidebar"
+            >
+              ✕
+            </button>
           </div>
           <div className="flex-1 overflow-hidden">{renderPanel()}</div>
         </div>
@@ -355,43 +363,6 @@ function RoleTag() {
   const role = useRoomStore((s) => s.role);
   const colors = { host: 'bg-purple-900/50 text-purple-300', panelist: 'bg-blue-900/50 text-blue-300', attendee: 'bg-gray-800 text-gray-400' };
   return <span className={`text-xs capitalize px-2 py-0.5 rounded-full font-medium ${colors[role] || colors.attendee}`}>{role === 'panelist' ? 'Co-Host' : role}</span>;
-}
-
-function EditableName({ socket, webinarId }) {
-  const { user } = useAuthStore();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(user?.name || '');
-
-  const save = () => {
-    const clean = name.trim();
-    if (!clean || clean === user?.name) { setEditing(false); return; }
-    socket?.emit('updateName', { webinarId, name: clean }, (res) => {
-      if (res?.success) {
-        useAuthStore.getState().setAuth({ ...user, name: clean }, localStorage.getItem('auth_token'));
-        toast.success('Name updated');
-      } else toast.error(res?.error || 'Failed');
-    });
-    setEditing(false);
-  };
-
-  if (editing) {
-    return (
-      <input
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onBlur={save}
-        onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-        maxLength={50}
-        className="bg-gray-800 text-white text-xs px-2 py-1 rounded border border-gray-600 w-32 focus:outline-none focus:border-blue-500"
-      />
-    );
-  }
-  return (
-    <button onClick={() => { setName(user?.name || ''); setEditing(true); }} className="text-gray-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-gray-800 transition-colors hidden sm:block" title="Edit name">
-      {user?.name || 'Anonymous'} ✏️
-    </button>
-  );
 }
 
 function InviteButton({ webinarId }) {

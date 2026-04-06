@@ -39,7 +39,7 @@ function RemoteAudio({ stream }) {
 }
 
 // ── Single video tile ─────────────────────────────────────────────────────────
-function Tile({ stream, name, isLocal, small = false, isScreen = false, isMuted }) {
+function Tile({ stream, name, isLocal, small = false, isScreen = false, isMuted, camOff }) {
   const videoRef = useRef(null);
   const [hasVideo, setHasVideo] = useState(false);
 
@@ -65,6 +65,9 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false, isMuted 
     }
   }, [stream]);
 
+  // For local user: if cam is off, show initials even though track exists
+  const showVideo = hasVideo && !camOff;
+
   // Build initials from name — e.g. "Deadpool Marvel" → "DM"
   // Filter out parenthetical words like "(Camera)"
   const initials = (name || '?')
@@ -77,7 +80,7 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false, isMuted 
   return (
     <div className={`relative bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center border border-gray-800 group ${small ? 'w-full h-full' : 'w-full h-full'}`}>
       {/* Avatar placeholder */}
-      <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity ${hasVideo ? 'opacity-0' : 'opacity-100'}`}>
+      <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity ${showVideo ? 'opacity-0' : 'opacity-100'}`}>
         <div className={`rounded-full bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center font-bold text-white shadow-lg ${small ? 'w-8 h-8 text-sm' : 'w-14 h-14 text-xl'}`}>
           {initials}
         </div>
@@ -89,7 +92,7 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false, isMuted 
         ref={videoRef}
         autoPlay playsInline
         muted={isLocal}
-        className={`w-full h-full transition-opacity ${isScreen ? 'object-contain bg-black' : 'object-cover'} ${hasVideo ? 'opacity-100' : 'opacity-0'}`}
+        className={`w-full h-full transition-opacity ${isScreen ? 'object-contain bg-black' : 'object-cover'} ${showVideo ? 'opacity-100' : 'opacity-0'}`}
       />
 
       {/* Label */}
@@ -122,7 +125,7 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false, isMuted 
 
 // ── Main VideoGrid ────────────────────────────────────────────────────────────
 export default function VideoGrid({ pinnedSocketId }) {
-  const { peers, localStream, screenStream, screenSharing, micEnabled } = useRoomStore();
+  const { peers, localStream, screenStream, screenSharing, micEnabled, camEnabled } = useRoomStore();
   const { user } = useAuthStore();
 
   // Find active screen share (local or remote)
@@ -134,17 +137,15 @@ export default function VideoGrid({ pinnedSocketId }) {
 
   const myName = user?.name || 'You';
 
-  // PiP cameras (shown when in spotlight mode)
+  // PiP cameras (shown when in spotlight mode) — always show ALL peers' camera tiles
   const pipTiles = [
-    { key: 'local', stream: localStream, name: myName, isLocal: true, isMuted: !micEnabled },
-    ...peers
-      .filter((p) => !p.streams?.screen || localScreenActive)
-      .map((p) => ({ key: p.socketId, stream: p.streams?.video || null, name: p.name, isLocal: false, isMuted: p.isMuted !== false })),
+    { key: 'local', stream: localStream, name: myName, isLocal: true, isMuted: !micEnabled, camOff: !camEnabled },
+    ...peers.map((p) => ({ key: p.socketId, stream: p.streams?.video || null, name: p.name, isLocal: false, isMuted: p.isMuted !== false })),
   ];
 
   // Grid tiles (shown when NOT in spotlight mode)
   const gridTiles = [
-    { key: 'local-cam', stream: localStream, name: myName, isLocal: true, isMuted: !micEnabled },
+    { key: 'local-cam', stream: localStream, name: myName, isLocal: true, isMuted: !micEnabled, camOff: !camEnabled },
     ...peers.map((p) => ({
       key: `${p.socketId}-video`,
       stream: p.streams?.video || null,
@@ -180,7 +181,7 @@ export default function VideoGrid({ pinnedSocketId }) {
           <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
             {pipTiles.map((t) => (
               <div key={t.key} className="w-36 h-24 rounded-xl overflow-hidden shadow-2xl border border-gray-700 ring-1 ring-black/50">
-                <Tile stream={t.stream} name={t.name} isLocal={t.isLocal} small isMuted={t.isMuted} />
+                <Tile stream={t.stream} name={t.name} isLocal={t.isLocal} small isMuted={t.isMuted} camOff={t.camOff} />
               </div>
             ))}
           </div>
@@ -189,7 +190,7 @@ export default function VideoGrid({ pinnedSocketId }) {
         /* ── GRID MODE ─── */
         <div className={`grid ${gridCols} gap-2 w-full h-full p-2 auto-rows-fr`}>
           {gridTiles.map((t) => (
-            <Tile key={t.key} stream={t.stream} name={t.name} isLocal={t.isLocal} isMuted={t.isMuted} />
+            <Tile key={t.key} stream={t.stream} name={t.name} isLocal={t.isLocal} isMuted={t.isMuted} camOff={t.camOff} />
           ))}
         </div>
       )}
