@@ -4,8 +4,6 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import VideoGrid from '../../../components/VideoGrid';
 import ChatPanel from '../../../components/ChatPanel';
-import QAPanel from '../../../components/QAPanel';
-import PollWidget from '../../../components/PollWidget';
 import ParticipantList from '../../../components/ParticipantList';
 import ControlBar from '../../../components/ControlBar';
 import { connectSocket, disconnectSocket } from '../../../lib/socket';
@@ -14,7 +12,7 @@ import useRoomStore from '../../../store/useRoomStore';
 import useAuthStore from '../../../store/useAuthStore';
 import { toast } from '../../../components/Toast';
 
-const TABS = ['Chat', 'Q&A', 'Polls', 'People'];
+const TABS = ['Chat', 'People'];
 
 export default function RoomPage() {
   const { id: webinarId } = useParams();
@@ -35,7 +33,7 @@ export default function RoomPage() {
   const [connecting,   setConnecting]   = useState(true);
   const [socketStatus, setSocketStatus] = useState('connecting'); // connecting | connected | disconnected
 
-  const { setRole, setWebinarId, setWebinarTitle, addPeer, setMessages, setQuestions, setPolls, resetRoom } = useRoomStore();
+  const { setRole, setWebinarId, setWebinarTitle, addPeer, setMessages, resetRoom } = useRoomStore();
   const mediasoup = useMediasoup(socketRef, webinarId);
 
   useEffect(() => {
@@ -59,10 +57,6 @@ export default function RoomPage() {
 
     // Room events
     socket.on('newMessage',      (msg)  => useRoomStore.getState().addMessage(msg));
-    socket.on('newQA',           (qa)   => useRoomStore.getState().addQuestion(qa));
-    socket.on('qaUpdated',       (qa)   => useRoomStore.getState().updateQuestion(qa));
-    socket.on('newPoll',         (poll) => { useRoomStore.getState().addPoll(poll); toast.info('New poll!'); });
-    socket.on('pollUpdated',     (poll) => useRoomStore.getState().updatePoll(poll));
     socket.on('recordingStarted',()     => { useRoomStore.getState().setIsRecording(true); toast.info('Recording started'); });
     socket.on('recordingStopped',()     => { useRoomStore.getState().setIsRecording(false); toast.info('Recording stopped'); });
 
@@ -124,8 +118,6 @@ export default function RoomPage() {
       setWebinarTitle(response.webinarTitle || '');
       setRole(response.role || urlRole);
       setMessages(response.chatHistory || []);
-      setQuestions(response.qaQuestions || []);
-      setPolls(response.polls || []);
       (response.peers || [])
         .filter((p) => p.userId !== user?.id)
         .forEach((peer) => addPeer(peer));
@@ -234,8 +226,6 @@ export default function RoomPage() {
     const socket = socketRef.current;
     switch (activeTab) {
       case 'Chat':   return <ChatPanel        socket={socket} webinarId={webinarId} />;
-      case 'Q&A':    return <QAPanel          socket={socket} webinarId={webinarId} />;
-      case 'Polls':  return <PollWidget       socket={socket} webinarId={webinarId} />;
       case 'People': return <ParticipantList  socket={socket} webinarId={webinarId} />;
     }
   };
@@ -331,11 +321,8 @@ function InviteButton({ webinarId }) {
 
 function TabButton({ tab, active, onClick, webinarId }) {
   // Show unread badge for Chat and Q&A
-  const qaCount       = useRoomStore((s) => s.qaQuestions.filter((q) => !q.answered).length);
   const handCount     = useRoomStore((s) => s.peers.filter((p) => p.handRaised).length);
-  const badge = (tab === 'Q&A' && qaCount > 0)   ? qaCount
-              : (tab === 'People' && handCount > 0) ? `✋${handCount}`
-              : null;
+  const badge = (tab === 'People' && handCount > 0) ? `✋${handCount}` : null;
 
   return (
     <button

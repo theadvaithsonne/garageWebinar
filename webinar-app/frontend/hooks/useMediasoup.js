@@ -46,40 +46,43 @@ export function useMediasoup(socketRef, webinarId) {
     const existing = useRoomStore.getState().localStream;
     if (existing) existing.getTracks().forEach((t) => t.stop());
 
+    const role = useRoomStore.getState().role;
+    const isAttendee = role === 'attendee';
+
     await ensureSendTransport();
-    const stream = await navigator.mediaDevices.getUserMedia({
+
+    // Attendees get video only (no mic) — host/panelist get both
+    const constraints = {
       video: {
         width:     { ideal: 1920, min: 640 },
         height:    { ideal: 1080, min: 480 },
         frameRate: { ideal: 30,   min: 15  },
         facingMode: 'user',
       },
-      audio: {
+      audio: isAttendee ? false : {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl:  true,
         sampleRate: 48000,
         channelCount: 2,
       },
-    });
+    };
+
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
     setLocalStream(stream);
 
     const vt = stream.getVideoTracks()[0];
     const at = stream.getAudioTracks()[0];
 
     if (vt) {
-      // Log actual camera resolution being used
       const settings = vt.getSettings();
       console.log(`[Camera] ${settings.width}x${settings.height} @ ${settings.frameRate}fps`);
 
       const vp = await sendTransportRef.current.produce({
         track: vt,
         encodings: [
-          // Low  — for bad networks (360p)
           { rid: 'r0', maxBitrate:  300_000, scaleResolutionDownBy: 4, scalabilityMode: 'S1T3' },
-          // Mid  — default quality (540p)
           { rid: 'r1', maxBitrate:  800_000, scaleResolutionDownBy: 2, scalabilityMode: 'S1T3' },
-          // High — full quality (1080p)
           { rid: 'r2', maxBitrate: 2_500_000, scaleResolutionDownBy: 1, scalabilityMode: 'S1T3' },
         ],
         codecOptions: {
@@ -177,8 +180,12 @@ export function useMediasoup(socketRef, webinarId) {
       consumersRef.current[producerId] = consumer;
 
       // Route to correct stream slot based on appData type
+      // IMPORTANT: screen video and screenAudio must use SEPARATE slots
+      // otherwise screenAudio overwrites the screen video stream
       const type = appData?.type || consumer.appData?.type;
-      const slot = (type === 'screen' || type === 'screenAudio') ? 'screen' : kind;
+      const slot = type === 'screen'      ? 'screen'
+                 : type === 'screenAudio' ? 'screenAudio'
+                 : kind; // 'video' or 'audio'
       updatePeerStream(producerSocketId, stream, slot);
     } catch (err) {
       console.error('[consume] error:', err.message);

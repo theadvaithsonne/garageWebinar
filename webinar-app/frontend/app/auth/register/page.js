@@ -19,7 +19,9 @@ function RegisterForm() {
   const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
 
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'host' });
+  const redirect = searchParams.get('redirect') || '';
+  const fromInvite = redirect.includes('/join/');
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: fromInvite ? 'attendee' : 'host' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -102,18 +104,20 @@ function RegisterForm() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-300 mb-1">I want to</label>
-            <select
-              name="role"
-              value={form.role}
-              onChange={handleChange}
-              className="w-full bg-gray-800 text-white text-sm px-3 py-2.5 rounded border border-gray-700 focus:outline-none focus:border-blue-500"
-            >
-              <option value="host">Host webinars</option>
-              <option value="attendee">Attend webinars</option>
-            </select>
-          </div>
+          {!fromInvite && (
+            <div>
+              <label className="block text-sm text-gray-300 mb-1">I want to</label>
+              <select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                className="w-full bg-gray-800 text-white text-sm px-3 py-2.5 rounded border border-gray-700 focus:outline-none focus:border-blue-500"
+              >
+                <option value="host">Host webinars</option>
+                <option value="attendee">Attend webinars</option>
+              </select>
+            </div>
+          )}
 
           <button
             type="submit"

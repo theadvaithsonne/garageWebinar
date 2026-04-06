@@ -142,9 +142,12 @@ export default function VideoGrid({ pinnedSocketId }) {
 
   return (
     <>
-      {/* Hidden audio players */}
+      {/* Hidden audio players — peer mic + screen share audio */}
       {peers.map((p) =>
         p.streams?.audio ? <RemoteAudio key={`audio-${p.socketId}`} stream={p.streams.audio} /> : null
+      )}
+      {peers.map((p) =>
+        p.streams?.screenAudio ? <RemoteAudio key={`screen-audio-${p.socketId}`} stream={p.streams.screenAudio} /> : null
       )}
 
       <div className="relative w-full h-full">

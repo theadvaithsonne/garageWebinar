@@ -424,11 +424,22 @@ export default function ControlBar({ socket, webinarId, onToggleMic, onToggleCam
         )
       )}
 
-      {/* Attendee controls */}
+      {/* Attendee controls — camera + raise hand (no mic, no screen share) */}
       {role === 'attendee' && (
-        <button onClick={handleRaiseHand} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-full transition-colors">
-          ✋ Raise Hand
-        </button>
+        <>
+          {!mediaStarted ? (
+            <button onClick={onStartMedia} className="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-sm px-4 py-2 rounded-full transition-all">
+              Turn On Camera
+            </button>
+          ) : (
+            <CtrlBtn onClick={onToggleCam} active={camEnabled}
+              icon={camEnabled ? '📹' : '📷'} label={camEnabled ? 'Cam On' : 'Cam Off'}
+              activeClass="bg-gray-700 hover:bg-gray-600" inactiveClass="bg-red-800 hover:bg-red-700" />
+          )}
+          <button onClick={handleRaiseHand} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-full transition-colors">
+            ✋ Raise Hand
+          </button>
+        </>
       )}
 
       {/* Emoji reactions */}
