@@ -85,14 +85,19 @@ export default function RoomPage() {
       mediasoup.consume(producerId, producerSocketId, kind, appData);
     });
     socket.on('consumerClosed', ({ consumerId, producerSocketId, kind, appData }) => {
-      // Clean up the peer's stream when their producer closes (e.g. stop screen share)
       if (producerSocketId) {
         const type = appData?.type || '';
         const slot = type === 'screen'      ? 'screen'
                    : type === 'screenAudio' ? 'screenAudio'
-                   : kind; // 'video' or 'audio'
+                   : kind;
         useRoomStore.getState().updatePeerStream(producerSocketId, null, slot);
       }
+    });
+
+    // Direct screen share stopped signal — reliable, doesn't depend on consumer chain
+    socket.on('screenShareStopped', ({ producerSocketId, type }) => {
+      console.log('[screenShareStopped]', producerSocketId, type);
+      useRoomStore.getState().updatePeerStream(producerSocketId, null, type === 'screenAudio' ? 'screenAudio' : 'screen');
     });
 
     socket.on('forceMuted', () => {

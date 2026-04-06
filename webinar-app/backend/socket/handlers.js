@@ -271,8 +271,16 @@ function setupSocketHandlers(io) {
         if (!peer) return;
         const producer = peer.producers.get(producerId);
         if (producer) {
-          producer.close(); // triggers 'producerclose' on all consumers → consumerClosed events
+          const appDataType = producer.appData?.type;
+          producer.close();
           peer.producers.delete(producerId);
+          // Direct broadcast for screen share — don't rely on consumer close chain
+          if (appDataType === 'screen' || appDataType === 'screenAudio') {
+            socket.to(webinarId).emit('screenShareStopped', {
+              producerSocketId: socket.id,
+              type: appDataType,
+            });
+          }
         }
       } catch (err) {
         console.error('[closeProducer] error:', err.message);
