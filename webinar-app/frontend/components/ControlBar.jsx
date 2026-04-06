@@ -63,6 +63,7 @@ export default function ControlBar({ socket, webinarId, onToggleMic, onToggleCam
   const camEnabled    = useRoomStore((s) => s.camEnabled);
   const screenSharing = useRoomStore((s) => s.screenSharing);
   const isRecording   = useRoomStore((s) => s.isRecording);
+  const handRaised    = useRoomStore((s) => s.handRaised);
 
   const [elapsed,       setElapsed]       = useState(0);
   const [showReactions, setShowReactions] = useState(false);
@@ -117,7 +118,12 @@ export default function ControlBar({ socket, webinarId, onToggleMic, onToggleCam
     });
   };
 
-  const handleRaiseHand = () => socket?.emit('raiseHand', { webinarId });
+  const handleRaiseHand = () => {
+    socket?.emit('raiseHand', { webinarId });
+    useRoomStore.getState().handRaised
+      ? useRoomStore.setState({ handRaised: false })
+      : useRoomStore.setState({ handRaised: true });
+  };
 
   const sendReaction = (emoji) => {
     socket?.emit('sendReaction', { webinarId, emoji });
@@ -426,8 +432,11 @@ export default function ControlBar({ socket, webinarId, onToggleMic, onToggleCam
 
       {/* Attendee controls — raise hand only (no camera/mic/screen until promoted to co-host) */}
       {role === 'attendee' && (
-        <button onClick={handleRaiseHand} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-4 py-2 rounded-full transition-colors">
-          ✋ Raise Hand
+        <button onClick={handleRaiseHand}
+          className={`text-white text-sm px-4 py-2 rounded-full transition-colors ${
+            handRaised ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-gray-700 hover:bg-gray-600'
+          }`}>
+          {handRaised ? '✋ Hand Raised' : '✋ Raise Hand'}
         </button>
       )}
 

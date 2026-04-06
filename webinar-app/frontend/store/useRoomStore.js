@@ -20,6 +20,7 @@ const useRoomStore = create((set, get) => ({
   camEnabled: false,
   screenSharing: false,
   isRecording: false,
+  handRaised: false,
 
   // Chat
   messages: [],
@@ -123,6 +124,7 @@ const useRoomStore = create((set, get) => ({
       camEnabled: false,
       screenSharing: false,
       isRecording: false,
+      handRaised: false,
       messages: [],
       qaQuestions: [],
       polls: [],

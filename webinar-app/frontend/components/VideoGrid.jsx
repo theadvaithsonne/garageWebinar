@@ -66,12 +66,13 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false }) {
   }, [stream]);
 
   // Build initials from name — e.g. "Deadpool Marvel" → "DM"
+  // Filter out parenthetical words like "(Camera)"
   const initials = (name || '?')
     .split(/\s+/)
-    .filter(Boolean)
+    .filter((w) => w && !w.startsWith('('))
     .map((w) => w[0].toUpperCase())
     .slice(0, 2)
-    .join('');
+    .join('') || '?';
 
   return (
     <div className={`relative bg-gray-900 rounded-xl overflow-hidden flex items-center justify-center border border-gray-800 group ${small ? 'w-full h-full' : 'w-full h-full'}`}>
