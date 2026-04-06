@@ -136,7 +136,7 @@ export function useMediasoup(socketRef, webinarId) {
       video: {
         width:     { ideal: 1920 },
         height:    { ideal: 1080 },
-        frameRate: { ideal: 30, min: 15 },
+        frameRate: { ideal: 30 },
       },
       audio: true,
     });
