@@ -169,12 +169,9 @@ function setupSocketHandlers(io) {
         const peer = room.peers.get(socket.id);
         if (!peer) return callback({ success: false, error: 'Peer not found' });
 
-        // Attendees can only produce camera video — not audio, screen, or screenAudio
-        const mediaType = appData?.type || '';
+        // Only host/panelist (co-host) can produce media
         if (!['host', 'panelist'].includes(peer.role)) {
-          if (mediaType !== 'camera') {
-            return callback({ success: false, error: 'Attendees can only share camera' });
-          }
+          return callback({ success: false, error: 'Attendees cannot produce media' });
         }
 
         const transport = peer.transports.get(transportId);

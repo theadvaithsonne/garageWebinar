@@ -96,9 +96,20 @@ export default function RoomPage() {
       setTimeout(() => { doCleanup(); router.push('/'); }, 1500);
     });
 
-    socket.on('roleChanged', ({ role: newRole }) => {
+    socket.on('roleChanged', async ({ role: newRole }) => {
       useRoomStore.getState().setRole(newRole);
-      toast.success(`Your role changed to ${newRole}`);
+      if (newRole === 'panelist') {
+        toast.success('You are now a Co-Host! You can use camera, mic & screen share.');
+        // Auto-start media for newly promoted co-host
+        try {
+          await mediasoup.startMedia();
+          setMediaStarted(true);
+        } catch (err) {
+          console.warn('Auto media start failed for co-host:', err.message);
+        }
+      } else {
+        toast.success(`Your role changed to ${newRole}`);
+      }
     });
 
     socket.on('webinarEnded', () => {
@@ -299,7 +310,7 @@ function WebinarTitle() {
 function RoleTag() {
   const role = useRoomStore((s) => s.role);
   const colors = { host: 'bg-purple-900/50 text-purple-300', panelist: 'bg-blue-900/50 text-blue-300', attendee: 'bg-gray-800 text-gray-400' };
-  return <span className={`text-xs capitalize px-2 py-0.5 rounded-full font-medium ${colors[role] || colors.attendee}`}>{role}</span>;
+  return <span className={`text-xs capitalize px-2 py-0.5 rounded-full font-medium ${colors[role] || colors.attendee}`}>{role === 'panelist' ? 'Co-Host' : role}</span>;
 }
 
 function InviteButton({ webinarId }) {

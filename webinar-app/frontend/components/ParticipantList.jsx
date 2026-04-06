@@ -17,9 +17,9 @@ export default function ParticipantList({ socket, webinarId }) {
     socket?.emit('removeParticipant', { webinarId, targetSocketId: id }, (r) => { if (!r?.success) toast.error(r?.error); });
   };
   const promote = (id, name) => {
-    if (!confirm(`Promote ${name} to panelist?`)) return;
+    if (!confirm(`Make ${name} a Co-Host? They will be able to use camera, mic & screen share.`)) return;
     socket?.emit('promoteToHost', { webinarId, targetSocketId: id }, (r) => {
-      if (r?.success) toast.success(`${name} promoted to panelist`);
+      if (r?.success) toast.success(`${name} is now a Co-Host`);
       else toast.error(r?.error);
     });
   };
@@ -97,7 +97,7 @@ function ParticipantRow({ name, role, isSelf, handRaised, roleBadge, isHost, onM
           {name} {isSelf && <span className="text-gray-500 text-xs">(You)</span>}
         </p>
         <span className={`inline-block text-xs px-1.5 py-0 rounded capitalize mt-0.5 ${roleBadge[role] || roleBadge.attendee}`}>
-          {role}
+          {role === 'panelist' ? 'Co-Host' : role}
         </span>
       </div>
 
@@ -105,7 +105,7 @@ function ParticipantRow({ name, role, isSelf, handRaised, roleBadge, isHost, onM
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={onMute}   title="Mute"   className="text-xs text-yellow-400 hover:text-yellow-300 px-1.5 py-1 rounded hover:bg-gray-700 transition-colors">🔇</button>
           {onPromote && (
-            <button onClick={onPromote} title="Promote" className="text-xs text-green-400 hover:text-green-300 px-1.5 py-1 rounded hover:bg-gray-700 transition-colors">⬆️</button>
+            <button onClick={onPromote} title="Make Co-Host" className="text-xs text-green-400 hover:text-green-300 px-1.5 py-1 rounded hover:bg-gray-700 transition-colors">⬆️</button>
           )}
           <button onClick={onRemove} title="Remove" className="text-xs text-red-400 hover:text-red-300 px-1.5 py-1 rounded hover:bg-gray-700 transition-colors">✕</button>
         </div>

@@ -46,29 +46,23 @@ export function useMediasoup(socketRef, webinarId) {
     const existing = useRoomStore.getState().localStream;
     if (existing) existing.getTracks().forEach((t) => t.stop());
 
-    const role = useRoomStore.getState().role;
-    const isAttendee = role === 'attendee';
-
     await ensureSendTransport();
 
-    // Attendees get video only (no mic) — host/panelist get both
-    const constraints = {
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         width:     { ideal: 1920, min: 640 },
         height:    { ideal: 1080, min: 480 },
         frameRate: { ideal: 30,   min: 15  },
         facingMode: 'user',
       },
-      audio: isAttendee ? false : {
+      audio: {
         echoCancellation: true,
         noiseSuppression: true,
         autoGainControl:  true,
         sampleRate: 48000,
         channelCount: 2,
       },
-    };
-
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    });
     setLocalStream(stream);
 
     const vt = stream.getVideoTracks()[0];
