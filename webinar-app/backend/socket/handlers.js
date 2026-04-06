@@ -224,9 +224,19 @@ function setupSocketHandlers(io) {
           peer.consumers.delete(consumer.id);
         });
         consumer.on('producerclose', () => {
+          // Find which peer owned this producer so the client can clean up the right stream
+          let producerSocketId = null;
+          for (const [sid, p] of room.peers) {
+            if (p.producers.has(producerId)) { producerSocketId = sid; break; }
+          }
           consumer.close();
           peer.consumers.delete(consumer.id);
-          socket.emit('consumerClosed', { consumerId: consumer.id });
+          socket.emit('consumerClosed', {
+            consumerId: consumer.id,
+            producerSocketId,
+            kind: consumer.kind,
+            appData: consumer.appData,
+          });
         });
 
         callback({
@@ -242,6 +252,23 @@ function setupSocketHandlers(io) {
       } catch (err) {
         console.error('[consume] error:', err);
         callback({ success: false, error: err.message });
+      }
+    });
+
+    // ── CLOSE PRODUCER (client explicitly stops a producer) ─────────────
+    socket.on('closeProducer', ({ webinarId, producerId }) => {
+      try {
+        const room = getRoom(webinarId);
+        if (!room) return;
+        const peer = room.peers.get(socket.id);
+        if (!peer) return;
+        const producer = peer.producers.get(producerId);
+        if (producer) {
+          producer.close(); // triggers 'producerclose' on all consumers → consumerClosed events
+          peer.producers.delete(producerId);
+        }
+      } catch (err) {
+        console.error('[closeProducer] error:', err.message);
       }
     });
 
@@ -417,7 +444,7 @@ function setupSocketHandlers(io) {
       const room = getRoom(webinarId);
       if (!room) return callback?.({ success: false });
       const peer = room.peers.get(socket.id);
-      if (!peer || peer.role !== 'host') return callback?.({ success: false, error: 'Unauthorized' });
+      if (!peer || !['host', 'panelist'].includes(peer.role)) return callback?.({ success: false, error: 'Unauthorized' });
       io.to(targetSocketId).emit('forceMuted');
       callback?.({ success: true });
     });
@@ -426,7 +453,7 @@ function setupSocketHandlers(io) {
       const room = getRoom(webinarId);
       if (!room) return callback?.({ success: false });
       const peer = room.peers.get(socket.id);
-      if (!peer || peer.role !== 'host') return callback?.({ success: false, error: 'Unauthorized' });
+      if (!peer || !['host', 'panelist'].includes(peer.role)) return callback?.({ success: false, error: 'Unauthorized' });
 
       const targetSocket = io.sockets.sockets.get(targetSocketId);
       if (targetSocket) {

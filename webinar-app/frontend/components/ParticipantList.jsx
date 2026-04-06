@@ -50,7 +50,7 @@ export default function ParticipantList({ socket, webinarId }) {
           <p className="text-white font-semibold text-sm">Participants</p>
           <p className="text-gray-500 text-xs mt-0.5">{total} in room</p>
         </div>
-        {role === 'host' && peers.length > 0 && (
+        {(role === 'host' || role === 'panelist') && peers.length > 0 && (
           <button
             onClick={muteAll}
             className="text-xs text-yellow-400 hover:text-yellow-300 bg-yellow-900/20 hover:bg-yellow-900/40 px-2 py-1 rounded transition-colors"
@@ -77,7 +77,7 @@ export default function ParticipantList({ socket, webinarId }) {
             role={peer.role}
             handRaised={peer.handRaised}
             roleBadge={roleBadge}
-            isHost={role === 'host'}
+            isHost={role === 'host' || role === 'panelist'}
             onMute={()    => mute(peer.socketId)}
             onRemove={()  => remove(peer.socketId, peer.name)}
             onPromote={peer.role === 'attendee' ? () => promote(peer.socketId, peer.name) : null}

@@ -32,6 +32,7 @@ export default function RoomPage() {
   const [joinError,    setJoinError]    = useState('');
   const [connecting,   setConnecting]   = useState(true);
   const [socketStatus, setSocketStatus] = useState('connecting'); // connecting | connected | disconnected
+  const [sidebarOpen,  setSidebarOpen]  = useState(true);
 
   const { setRole, setWebinarId, setWebinarTitle, addPeer, setMessages, resetRoom } = useRoomStore();
   const mediasoup = useMediasoup(socketRef, webinarId);
@@ -80,7 +81,16 @@ export default function RoomPage() {
     socket.on('newProducer', ({ producerId, producerSocketId, kind, appData }) => {
       mediasoup.consume(producerId, producerSocketId, kind, appData);
     });
-    socket.on('consumerClosed', ({ consumerId }) => console.log('Consumer closed:', consumerId));
+    socket.on('consumerClosed', ({ consumerId, producerSocketId, kind, appData }) => {
+      // Clean up the peer's stream when their producer closes (e.g. stop screen share)
+      if (producerSocketId) {
+        const type = appData?.type || '';
+        const slot = type === 'screen'      ? 'screen'
+                   : type === 'screenAudio' ? 'screenAudio'
+                   : kind; // 'video' or 'audio'
+        useRoomStore.getState().updatePeerStream(producerSocketId, null, slot);
+      }
+    });
 
     socket.on('forceMuted', () => {
       mediasoup.forceMute();
@@ -260,6 +270,13 @@ export default function RoomPage() {
         <WebinarTitle />
         <RoleTag />
         <div className="flex-1" />
+        <button
+          onClick={() => setSidebarOpen((v) => !v)}
+          className="text-gray-400 hover:text-white text-sm px-2 py-1 rounded transition-colors"
+          title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
+        >
+          {sidebarOpen ? '▶' : '◀'}
+        </button>
         <InviteButton webinarId={webinarId} />
       </div>
 
@@ -271,6 +288,7 @@ export default function RoomPage() {
         </div>
 
         {/* Sidebar */}
+        {sidebarOpen && (
         <div className="w-80 flex flex-col border-l border-gray-700 flex-shrink-0 bg-gray-900">
           {/* Tabs */}
           <div className="flex border-b border-gray-700 flex-shrink-0">
@@ -286,6 +304,7 @@ export default function RoomPage() {
           </div>
           <div className="flex-1 overflow-hidden">{renderPanel()}</div>
         </div>
+        )}
       </div>
 
       {/* Controls */}

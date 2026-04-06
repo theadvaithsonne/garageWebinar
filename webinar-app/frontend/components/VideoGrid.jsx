@@ -125,9 +125,11 @@ export default function VideoGrid({ pinnedSocketId }) {
   const spotlightName     = localScreenActive ? 'Your Screen' : (remoteScreenPeer ? `${remoteScreenPeer.name}'s Screen` : null);
   const inSpotlight       = !!spotlightStream;
 
+  const myName = user?.name || 'You';
+
   // PiP cameras (shown when in spotlight mode)
   const pipTiles = [
-    { key: 'local', stream: localStream, name: 'You', isLocal: true },
+    { key: 'local', stream: localStream, name: myName, isLocal: true },
     ...peers
       .filter((p) => !p.streams?.screen || localScreenActive) // hide screen peer's camera if they're spotlighted
       .map((p) => ({ key: p.socketId, stream: p.streams?.video || null, name: p.name, isLocal: false })),
@@ -135,7 +137,7 @@ export default function VideoGrid({ pinnedSocketId }) {
 
   // Grid tiles (shown when NOT in spotlight mode)
   const gridTiles = [
-    { key: 'local-cam', stream: localStream, name: 'You (Camera)', isLocal: true },
+    { key: 'local-cam', stream: localStream, name: myName, isLocal: true },
     ...peers.map((p) => ({
       key: `${p.socketId}-video`,
       stream: p.streams?.video || null,

@@ -154,15 +154,21 @@ export function useMediasoup(socketRef, webinarId) {
 
   // ── Stop screen share ─────────────────────────────────────────────────────
   const stopScreenShare = useCallback(() => {
+    const socket = socketRef.current;
     ['screen', 'screenAudio'].forEach((key) => {
       const p = producersRef.current[key];
-      if (p && !p.closed) { try { p.close(); } catch {} delete producersRef.current[key]; }
+      if (p && !p.closed) {
+        // Notify server to close producer — triggers consumerClosed on all consumers
+        socket?.emit('closeProducer', { webinarId, producerId: p.id });
+        try { p.close(); } catch {}
+        delete producersRef.current[key];
+      }
     });
     const { screenStream: ss } = useRoomStore.getState();
     ss?.getTracks().forEach((t) => t.stop());
     setScreenStream(null);
     setScreenSharing(false);
-  }, [setScreenStream, setScreenSharing]);
+  }, [socketRef, webinarId, setScreenStream, setScreenSharing]);
 
   // ── Consume remote stream ─────────────────────────────────────────────────
   const consume = useCallback(async (producerId, producerSocketId, kind, appData) => {
@@ -188,7 +194,13 @@ export function useMediasoup(socketRef, webinarId) {
 
   // ── Cleanup ───────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
-    Object.values(producersRef.current).forEach((p) => { try { p.close(); } catch {} });
+    const socket = socketRef.current;
+    Object.entries(producersRef.current).forEach(([, p]) => {
+      if (p && !p.closed) {
+        socket?.emit('closeProducer', { webinarId, producerId: p.id });
+        try { p.close(); } catch {}
+      }
+    });
     Object.values(consumersRef.current).forEach((c) => { try { c.close(); } catch {} });
     try { sendTransportRef.current?.close(); } catch {}
     try { recvTransportRef.current?.close(); } catch {}
