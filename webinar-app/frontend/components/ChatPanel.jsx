@@ -11,7 +11,7 @@ export default function ChatPanel({ socket, webinarId }) {
   const [autoScroll, setAutoScroll] = useState(true);
   const bottomRef    = useRef(null);
   const scrollRef    = useRef(null);
-  const { messages } = useRoomStore();
+  const { messages, myUserId } = useRoomStore();
   const { user }     = useAuthStore();
 
   // Auto-scroll to bottom on new messages, unless user scrolled up
@@ -67,7 +67,7 @@ export default function ChatPanel({ socket, webinarId }) {
         )}
 
         {messages.map((msg, i) => {
-          const isOwn = msg.userId === user?.id;
+          const isOwn = msg.userId === (myUserId || user?.id);
           const showName = i === 0 || messages[i - 1]?.userId !== msg.userId;
 
           return (

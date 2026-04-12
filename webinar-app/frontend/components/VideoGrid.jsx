@@ -125,7 +125,7 @@ function Tile({ stream, name, isLocal, small = false, isScreen = false, isMuted,
 
 // ── Main VideoGrid ────────────────────────────────────────────────────────────
 export default function VideoGrid({ pinnedSocketId }) {
-  const { peers, localStream, screenStream, screenSharing, micEnabled, camEnabled } = useRoomStore();
+  const { peers, localStream, screenStream, screenSharing, micEnabled, camEnabled, guestName } = useRoomStore();
   const { user } = useAuthStore();
 
   // Find active screen share (local or remote)
@@ -135,7 +135,7 @@ export default function VideoGrid({ pinnedSocketId }) {
   const spotlightName     = localScreenActive ? 'Your Screen' : (remoteScreenPeer ? `${remoteScreenPeer.name}'s Screen` : null);
   const inSpotlight       = !!spotlightStream;
 
-  const myName = user?.name || 'You';
+  const myName = user?.name || guestName || 'You';
 
   // PiP cameras (shown when in spotlight mode) — always show ALL peers' camera tiles
   const pipTiles = [

@@ -11,14 +11,13 @@ export default function JoinPage() {
   const router = useRouter();
   const { user, token } = useAuthStore();
 
-  const [webinar, setWebinar] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [webinar, setWebinar]     = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
+  const [guestName, setGuestName] = useState('');
 
-  // Fixed: was useState (bug), now useEffect
   useEffect(() => {
     if (!webinarId) return;
-    // Public endpoint — no auth required; backend exposes limited info
     api.get(`/api/webinars/${webinarId}`)
       .then(({ data }) => setWebinar(data))
       .catch((err) => {
@@ -29,11 +28,15 @@ export default function JoinPage() {
   }, [webinarId]);
 
   const handleJoin = () => {
-    if (!token) {
-      router.push(`/auth/login?redirect=/join/${webinarId}`);
+    // Authenticated user — join directly
+    if (token) {
+      router.push(`/room/${webinarId}?role=attendee`);
       return;
     }
-    router.push(`/room/${webinarId}?role=attendee`);
+    // Guest user — join with name
+    if (guestName.trim()) {
+      router.push(`/room/${webinarId}?role=attendee&guest=true&name=${encodeURIComponent(guestName.trim())}`);
+    }
   };
 
   if (loading) {
@@ -106,33 +109,35 @@ export default function JoinPage() {
               <div className="bg-gray-800 rounded-xl p-4">
                 <p className="text-gray-400 text-sm">This webinar has ended.</p>
               </div>
+            ) : user ? (
+              /* Logged-in user — join directly */
+              <button
+                onClick={handleJoin}
+                className="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold py-3 rounded-xl transition-all"
+              >
+                {isLive ? '🔴 Join Live Now' : 'Join Webinar'}
+              </button>
             ) : (
-              <>
-                {user ? (
-                  <button
-                    onClick={handleJoin}
-                    className="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold py-3 rounded-xl transition-all"
-                  >
-                    {isLive ? '🔴 Join Live Now' : 'Join Webinar'}
-                  </button>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-gray-400 text-sm">Sign in to join this webinar</p>
-                    <button
-                      onClick={handleJoin}
-                      className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-xl transition-colors"
-                    >
-                      Sign In to Join
-                    </button>
-                    <Link
-                      href={`/auth/register?redirect=/join/${webinarId}`}
-                      className="block w-full text-center bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm py-2.5 rounded-xl transition-colors"
-                    >
-                      Create Free Account
-                    </Link>
-                  </div>
-                )}
-              </>
+              /* Guest — just enter a name */
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Enter your name"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
+                  maxLength={50}
+                  className="w-full bg-gray-800 border border-gray-700 text-white text-center rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 placeholder-gray-500"
+                  autoFocus
+                />
+                <button
+                  onClick={handleJoin}
+                  disabled={!guestName.trim()}
+                  className="w-full bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
+                >
+                  {isLive ? '🔴 Join Live Now' : 'Join Webinar'}
+                </button>
+              </div>
             )}
           </div>
         </div>

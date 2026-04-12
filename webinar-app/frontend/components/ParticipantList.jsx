@@ -65,7 +65,7 @@ export default function ParticipantList({ socket, webinarId }) {
       <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
         {/* Self */}
         <ParticipantRow
-          name={user?.name || 'You'}
+          name={user?.name || useRoomStore.getState().guestName || 'You'}
           role={role}
           isSelf
           roleBadge={roleBadge}

@@ -22,6 +22,8 @@ export default function RoomPage() {
 
   const urlRole        = searchParams.get('role') || 'attendee';
   const panelistToken  = searchParams.get('pt') || null;
+  const isGuest        = searchParams.get('guest') === 'true';
+  const guestName      = searchParams.get('name') || '';
 
   const socketRef    = useRef(null);
   const hasJoinedRef = useRef(false);
@@ -34,15 +36,18 @@ export default function RoomPage() {
   const [connecting,   setConnecting]   = useState(true);
   const [socketStatus, setSocketStatus] = useState('connecting'); // connecting | connected | disconnected
   const [sidebarOpen,  setSidebarOpen]  = useState(true);
+  const [webinarOver,  setWebinarOver]  = useState(false);
 
-  const { setRole, setWebinarId, setWebinarTitle, addPeer, setMessages, resetRoom, setChatTabActive } = useRoomStore();
+  const { setRole, setWebinarId, setWebinarTitle, setGuestName: storeGuestName, setMyUserId, addPeer, setMessages, resetRoom, setChatTabActive } = useRoomStore();
   const mediasoup = useMediasoup(socketRef, webinarId);
 
   useEffect(() => {
-    if (!token || !webinarId || hasJoinedRef.current) return;
+    // Allow joining if user has token OR is a guest with a name
+    if ((!token && !isGuest) || !webinarId || hasJoinedRef.current) return;
+    if (isGuest && !guestName) return;
     hasJoinedRef.current = true;
 
-    const socket = connectSocket(token);
+    const socket = isGuest ? connectSocket(null, guestName) : connectSocket(token);
     socketRef.current = socket;
 
     socket.on('connect',       () => setSocketStatus('connected'));
@@ -63,7 +68,8 @@ export default function RoomPage() {
     socket.on('recordingStopped',()     => { useRoomStore.getState().setIsRecording(false); toast.info('Recording stopped'); });
 
     socket.on('peerJoined', (peer) => {
-      if (peer.userId === user?.id) return;
+      const myId = useRoomStore.getState().myUserId || user?.id;
+      if (peer.userId === myId) return;
       useRoomStore.getState().addPeer(peer);
       toast.info(`${peer.name} joined`);
     });
@@ -136,19 +142,26 @@ export default function RoomPage() {
     });
 
     socket.on('webinarEnded', () => {
-      toast.info('The webinar has ended');
-      // Delay navigation to allow recording upload to continue
-      const checkAndNavigate = () => {
-        const uploadProgress = document.querySelector('[data-upload-active]');
-        if (uploadProgress) {
-          toast.info('Waiting for recording upload to finish...');
-          setTimeout(checkAndNavigate, 3000);
-        } else {
-          doCleanup();
-          router.push('/dashboard');
-        }
-      };
-      setTimeout(checkAndNavigate, 2000);
+      const currentRole = useRoomStore.getState().role;
+      if (currentRole === 'host') {
+        toast.info('The webinar has ended');
+        // Host may have recording upload — wait for it
+        const checkAndNavigate = () => {
+          const uploadProgress = document.querySelector('[data-upload-active]');
+          if (uploadProgress) {
+            toast.info('Waiting for recording upload to finish...');
+            setTimeout(checkAndNavigate, 3000);
+          } else {
+            doCleanup();
+            router.push('/dashboard');
+          }
+        };
+        setTimeout(checkAndNavigate, 2000);
+      } else {
+        // Attendee / co-host — show "ended" screen
+        doCleanup();
+        setWebinarOver(true);
+      }
     });
 
     // Join the room
@@ -162,9 +175,12 @@ export default function RoomPage() {
       setWebinarId(webinarId);
       setWebinarTitle(response.webinarTitle || '');
       setRole(response.role || urlRole);
+      if (response.userId) setMyUserId(response.userId);
+      if (isGuest && guestName) storeGuestName(guestName);
       setMessages(response.chatHistory || []);
+      const selfId = response.userId || user?.id;
       (response.peers || [])
-        .filter((p) => p.userId !== user?.id)
+        .filter((p) => p.userId !== selfId)
         .forEach((peer) => addPeer(peer));
 
       try {
@@ -240,6 +256,18 @@ export default function RoomPage() {
   };
 
   // ── Render states ────────────────────────────────────────────────────────
+  if (webinarOver) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+        <div className="bg-gray-900 rounded-2xl p-10 text-center border border-gray-800 max-w-sm shadow-2xl">
+          <div className="text-5xl mb-4">🎬</div>
+          <h1 className="text-white text-xl font-bold mb-2">Webinar Ended</h1>
+          <p className="text-gray-400 text-sm">Thank you for joining! We hope you enjoyed the session.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (joinError) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -247,8 +275,8 @@ export default function RoomPage() {
           <div className="text-4xl mb-3">🚫</div>
           <p className="text-red-400 text-lg font-semibold mb-2">Failed to join</p>
           <p className="text-gray-400 text-sm mb-5">{joinError}</p>
-          <button onClick={() => router.push('/dashboard')} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-5 py-2 rounded-lg transition-colors">
-            Back to Dashboard
+          <button onClick={() => router.push(isGuest ? '/' : '/dashboard')} className="bg-gray-700 hover:bg-gray-600 text-white text-sm px-5 py-2 rounded-lg transition-colors">
+            {isGuest ? 'Go Home' : 'Back to Dashboard'}
           </button>
         </div>
       </div>

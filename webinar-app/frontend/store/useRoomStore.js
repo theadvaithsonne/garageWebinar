@@ -7,6 +7,8 @@ const useRoomStore = create((set, get) => ({
   webinarId: null,
   webinarTitle: '',
   role: 'attendee', // host | panelist | attendee
+  guestName: null,  // set when joining as guest (no auth)
+  myUserId: null,   // server-assigned userId (works for both auth and guest users)
 
   // Peers: { socketId, userId, name, role, stream?: MediaStream }
   peers: [],
@@ -42,6 +44,8 @@ const useRoomStore = create((set, get) => ({
   setWebinarId: (id) => set({ webinarId: id }),
   setWebinarTitle: (title) => set({ webinarTitle: title }),
   setRole: (role) => set({ role }),
+  setGuestName: (name) => set({ guestName: name }),
+  setMyUserId: (id) => set({ myUserId: id }),
 
   setLocalStream: (stream) => set({ localStream: stream }),
   setScreenStream: (stream) => set({ screenStream: stream }),
@@ -133,6 +137,8 @@ const useRoomStore = create((set, get) => ({
       webinarId: null,
       webinarTitle: '',
       role: 'attendee',
+      guestName: null,
+      myUserId: null,
       peers: [],
       localStream: null,
       screenStream: null,

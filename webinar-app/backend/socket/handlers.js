@@ -25,16 +25,34 @@ const qaRateLimit   = makeRateLimiter(10);  // 10 questions / min
 const voteRateLimit = makeRateLimiter(20);  // 20 votes / min
 
 function setupSocketHandlers(io) {
-  // ── Auth middleware ──────────────────────────────────────────────────────
+  // ── Auth middleware (supports JWT users + guest attendees) ────────────────
   io.use((socket, next) => {
     const token = socket.handshake.auth?.token;
-    if (!token) return next(new Error('Authentication required'));
-    try {
-      socket.user = jwt.verify(token, process.env.JWT_SECRET);
-      next();
-    } catch {
-      next(new Error('Invalid or expired token'));
+    const guestName = socket.handshake.auth?.guestName;
+
+    // Authenticated user — verify JWT
+    if (token) {
+      try {
+        socket.user = jwt.verify(token, process.env.JWT_SECRET);
+        return next();
+      } catch {
+        return next(new Error('Invalid or expired token'));
+      }
     }
+
+    // Guest user — only needs a display name
+    if (guestName && typeof guestName === 'string' && guestName.trim()) {
+      socket.user = {
+        userId: `guest_${socket.id}`,
+        name: guestName.trim().slice(0, 50),
+        email: null,
+        role: 'attendee',
+        isGuest: true,
+      };
+      return next();
+    }
+
+    return next(new Error('Authentication required'));
   });
 
   io.on('connection', (socket) => {
@@ -47,12 +65,14 @@ function setupSocketHandlers(io) {
           return callback({ success: false, error: 'Invalid webinarId' });
         }
 
-        // Verify role server-side
+        // Verify role server-side — guests are always attendees
         let verifiedRole = 'attendee';
         const webinar = await Webinar.findById(webinarId);
         if (!webinar) return callback({ success: false, error: 'Webinar not found' });
 
-        if (role === 'host' && webinar.hostId.toString() === socket.user.userId) {
+        if (socket.user.isGuest) {
+          verifiedRole = 'attendee'; // guests cannot be host or panelist
+        } else if (role === 'host' && webinar.hostId.toString() === socket.user.userId) {
           verifiedRole = 'host';
           if (webinar.status === 'scheduled') {
             await Webinar.findByIdAndUpdate(webinarId, { status: 'live' });
@@ -93,6 +113,7 @@ function setupSocketHandlers(io) {
         callback({
           success:         true,
           role:            verifiedRole,
+          userId:          socket.user.userId,
           webinarTitle:    webinar.title,
           rtpCapabilities: room.router.rtpCapabilities,
           chatHistory:     messages.map((m) => ({

@@ -2,7 +2,7 @@ import { io } from 'socket.io-client';
 
 let socket = null;
 
-export function connectSocket(token) {
+export function connectSocket(token, guestName) {
   // Always disconnect stale socket before creating a new one
   if (socket) {
     socket.removeAllListeners();
@@ -10,8 +10,10 @@ export function connectSocket(token) {
     socket = null;
   }
 
+  const auth = token ? { token } : { guestName };
+
   socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000', {
-    auth: { token },
+    auth,
     transports: ['websocket'],
     autoConnect: false,
     reconnection: true,
